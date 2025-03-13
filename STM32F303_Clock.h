@@ -3,6 +3,10 @@
 
 #include "stm32f3xx.h"
 
+extern uint32_t AhbClk;
+extern uint32_t Apb1Clk;
+extern uint32_t Apb2Clk;
+
 #define HSE_VALUE 10000000U
 #define HSI_VALUE 8000000U
 

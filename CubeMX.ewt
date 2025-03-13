@@ -1438,4 +1438,7 @@
     <file>
         <name>$PROJ_DIR$\system_stm32f3xx.c</name>
     </file>
+    <file>
+        <name>$PROJ_DIR$\TimerSys.c</name>
+    </file>
 </project>
