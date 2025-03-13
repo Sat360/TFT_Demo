@@ -1,0 +1,10 @@
+/CubeMX
+/not
+/Out
+/settings
+/*.dep
+/*.c_*
+/*.dep
+/*.h_
+/*.bat
+/*.ewp
