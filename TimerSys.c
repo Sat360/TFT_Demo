@@ -5,6 +5,9 @@ struct sSysTimer st;
 void TimerSys_init(void)
 {
 	RCC->APB1ENR |= RCC_APB1ENR_TIM6EN;
+	tmpio = RCC->APB1ENR & RCC_APB1ENR_TIM6EN;
+	(void)tmpio;
+	
 	TIM6->CNT = 0;
 	TIM6->PSC = 1;	// Prescaler set to 2
 	TIM6->ARR = Tim6Clk / 2 / 1000 - 1; // 1 kHz

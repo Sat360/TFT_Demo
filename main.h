@@ -77,8 +77,6 @@ extern "C" {
 #define OSC_IN_GPIO_Port GPIOF
 #define OSC_OUT_Pin LL_GPIO_PIN_1
 #define OSC_OUT_GPIO_Port GPIOF
-#define B1_Pin LL_GPIO_PIN_0
-#define B1_GPIO_Port GPIOA
 #define SPI1_SCK_Pin LL_GPIO_PIN_5
 #define SPI1_SCK_GPIO_Port GPIOA
 #define SPI1_MISO_Pin LL_GPIO_PIN_6
