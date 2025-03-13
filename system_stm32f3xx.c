@@ -1,5 +1,7 @@
 #include "stm32f3xx.h"
 
+extern __IO uint32_t tmpio;
+
 #if defined(USER_VECT_TAB_ADDRESS)
 /* #define VECT_TAB_SRAM */
 #if defined(VECT_TAB_SRAM)
@@ -26,4 +28,16 @@ void SystemInit(void)
 #if defined(USER_VECT_TAB_ADDRESS)
   SCB->VTOR = VECT_TAB_BASE_ADDRESS | VECT_TAB_OFFSET; /* Vector Table Relocation in Internal SRAM */
 #endif /* USER_VECT_TAB_ADDRESS */
+  
+  	// Enable periph  	
+	RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
+	tmpio = RCC->APB2ENR & RCC_APB2ENR_SYSCFGEN;
+	(void)tmpio;
+	
+	RCC->APB1ENR |= RCC_APB1ENR_PWREN;
+	tmpio = RCC->APB1ENR & RCC_APB1ENR_PWREN;
+	(void)tmpio;
+	
+	NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_0);
+
 }

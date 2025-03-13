@@ -1421,6 +1421,12 @@
         </settings>
     </configuration>
     <file>
+        <name>$PROJ_DIR$\GPIO.c</name>
+    </file>
+    <file>
+        <name>$PROJ_DIR$\LED.c</name>
+    </file>
+    <file>
         <name>$PROJ_DIR$\main.c</name>
     </file>
     <file>

@@ -85,22 +85,6 @@ extern "C" {
 #define SPI1_MISO_GPIO_Port GPIOA
 #define SPI1_MISOA7_Pin LL_GPIO_PIN_7
 #define SPI1_MISOA7_GPIO_Port GPIOA
-#define LD4_Pin LL_GPIO_PIN_8
-#define LD4_GPIO_Port GPIOE
-#define LD3_Pin LL_GPIO_PIN_9
-#define LD3_GPIO_Port GPIOE
-#define LD5_Pin LL_GPIO_PIN_10
-#define LD5_GPIO_Port GPIOE
-#define LD7_Pin LL_GPIO_PIN_11
-#define LD7_GPIO_Port GPIOE
-#define LD9_Pin LL_GPIO_PIN_12
-#define LD9_GPIO_Port GPIOE
-#define LD10_Pin LL_GPIO_PIN_13
-#define LD10_GPIO_Port GPIOE
-#define LD8_Pin LL_GPIO_PIN_14
-#define LD8_GPIO_Port GPIOE
-#define LD6_Pin LL_GPIO_PIN_15
-#define LD6_GPIO_Port GPIOE
 #define LCD_DC_Pin LL_GPIO_PIN_8
 #define LCD_DC_GPIO_Port GPIOD
 #define LCD_RST_Pin LL_GPIO_PIN_9
@@ -127,18 +111,6 @@ extern "C" {
 #define MEMS_INT1_GPIO_Port GPIOE
 #define MEMS_INT2_Pin LL_GPIO_PIN_1
 #define MEMS_INT2_GPIO_Port GPIOE
-#ifndef NVIC_PRIORITYGROUP_0
-#define NVIC_PRIORITYGROUP_0         ((uint32_t)0x00000007) /*!< 0 bit  for pre-emption priority,
-                                                                 4 bits for subpriority */
-#define NVIC_PRIORITYGROUP_1         ((uint32_t)0x00000006) /*!< 1 bit  for pre-emption priority,
-                                                                 3 bits for subpriority */
-#define NVIC_PRIORITYGROUP_2         ((uint32_t)0x00000005) /*!< 2 bits for pre-emption priority,
-                                                                 2 bits for subpriority */
-#define NVIC_PRIORITYGROUP_3         ((uint32_t)0x00000004) /*!< 3 bits for pre-emption priority,
-                                                                 1 bit  for subpriority */
-#define NVIC_PRIORITYGROUP_4         ((uint32_t)0x00000003) /*!< 4 bits for pre-emption priority,
-                                                                 0 bit  for subpriority */
-#endif
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
