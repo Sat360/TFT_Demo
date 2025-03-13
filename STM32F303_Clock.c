@@ -5,6 +5,8 @@ uint32_t SystemCoreClock = 8000000;
 uint32_t AhbClk = 48000000;
 uint32_t Apb1Clk = 24000000;
 uint32_t Apb2Clk = 48000000;
+uint32_t Tim2Clk = 24000000;
+uint32_t Tim15Clk = 48000000;
 const uint8_t AHBPrescTable[16] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 6, 7, 8, 9};
 const uint8_t APBPrescTable[8]  = {0, 0, 0, 0, 1, 2, 3, 4};
 
@@ -188,7 +190,9 @@ void SystemCoreClockUpdate (void)
   
   tmp = (RCC->CFGR & RCC_CFGR_PPRE1_Msk) >> RCC_CFGR_PPRE1_Pos;
   Apb1Clk = SystemCoreClock >> APBPrescTable[tmp];
+  Tim2Clk = (tmp == 0 ? Apb1Clk : (Apb1Clk * 2));
   
   tmp = (RCC->CFGR & RCC_CFGR_PPRE2_Msk) >> RCC_CFGR_PPRE2_Pos;
   Apb2Clk = SystemCoreClock >> APBPrescTable[tmp];
+  Tim15Clk = (tmp == 0 ? Apb2Clk : (Apb2Clk * 2));
 }
