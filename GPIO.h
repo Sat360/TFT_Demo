@@ -25,5 +25,10 @@
 #define GPIO_PUPD_PD		2
 
 void InitPin(GPIO_TypeDef *GPIO, uint8_t pin, uint8_t mode, uint8_t otype, uint8_t speed, uint8_t pupd);
+void SetAltPin(GPIO_TypeDef *GPIO, uint8_t pin, uint8_t func);
+
+#define PortSet(Port,Pin) 	Port->BSRR = (uint32_t)(1 << (Pin + 0))
+#define PortReset(Port,Pin) Port->BSRR = (uint32_t)(1 << (Pin + 16))
+#define PortCheck(Port,Pin) (Port->IDR & (uint32_t)(1 << Pin))
 
 #endif // __GPIO_H__

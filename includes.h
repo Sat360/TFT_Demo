@@ -3,6 +3,9 @@
 #include "LED.h"
 #include "TimerSys.h"
 #include "Buttons.h"
+#include "TFT.h"
+
+#define _wdr()
 
 #define SysTimerPrio 14
 

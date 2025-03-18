@@ -1,6 +1,6 @@
 #include "includes.h"
 
-struct sSysTimer st;
+volatile struct sSysTimer st;
 
 void TimerSys_init(void)
 {
@@ -30,5 +30,14 @@ void TIM6_DAC_IRQHandler(void)
 		st.ms -= 1000;
 		st.s++;
 		st.Flags.f1s = 1;
+	}
+}
+
+void Delay(uint16_t delay)
+{
+	st.delay = delay;
+	while(st.delay)
+	{
+		_wdr();
 	}
 }

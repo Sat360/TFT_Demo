@@ -12,6 +12,7 @@ int main(void)
 	LED_init();
 	TimerSys_init();
 	Buttons_init();
+	TFT_init();
 
 	LED_set(led);
 

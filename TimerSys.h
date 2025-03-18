@@ -2,6 +2,7 @@
 #define __TIMERSYS_H__
 
 void TimerSys_init(void);
+void Delay(uint16_t delay);
 
 struct sSysTimerFlags
 {
@@ -18,6 +19,6 @@ struct sSysTimer
 	uint16_t s;
 };
 
-extern struct sSysTimer st;
+extern volatile struct sSysTimer st;
 
 #endif // __TIMERSYS_H__
