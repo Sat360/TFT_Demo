@@ -7,7 +7,8 @@
 
 #define _wdr()
 
-#define SysTimerPrio 14
+#define SysTimerPrio 13
+#define TFT_DMA_Prio 14
 
 #define Error_Handler() {while(1);}
 extern __IO uint32_t tmpio;

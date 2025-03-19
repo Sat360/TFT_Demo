@@ -7,9 +7,18 @@
 void TFT_init(void);
 
 #define TP_ENA		// Enable touchpad
-//#define TFT_DMA		// Enable DMA for SPI2
+#define TFT_DMA		// Enable DMA for SPI2
+// DMA settings:
+// RX (periph to mem): DMA1 ch4
+// TX (mem to periph): DMA1 ch5
+#define TFT_DMA_BUFF 10000
 #define SPI2_DR_8bit	*(__IO uint8_t*)&(SPI2->DR)
 #define SPI2_DR_16bit	(SPI2->DR)
+
+struct sTFT
+{
+	uint8_t busy;
+};
 
 // Define pins
 #define TPIRQ_PORT 		GPIOD
@@ -34,7 +43,7 @@ void TFT_init(void);
 void TFT_init(void);
 #define TFT_Sel() 	PortReset(TFTCS_PORT,TFTCS_PIN)
 #define TFT_Free()	PortSet(TFTCS_PORT,TFTCS_PIN)
-#define TFT_Wait()	{while(!(SPI2->SR & SPI_SR_TXE));while(SPI2->SR & SPI_SR_BSY);} //{while(SPI2->SR & SPI_SR_BSY);}
+#define TFT_Wait()	{while(SPI2->SR & SPI_SR_BSY);} //{while(SPI2->SR & SPI_SR_BSY);}
 #define TFT_Clear1(){(void)SPI2->DR;(void)SPI2->SR;}
 #define TFT_Clear() {while(SPI2->SR & SPI_SR_RXNE) (void)SPI2->DR;}
 #define TFT_8bit()	{SPI2->CR2 &= ~SPI_CR2_DS_3;}
