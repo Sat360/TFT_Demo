@@ -5,16 +5,18 @@
 #include "GPIO.h"
 
 void TFT_init(void);
+void FillRect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color);
+
+#define RGB5(r, g, b)	(((r) << 11) | ((g) << 6) | (b))	// 5-bit RGB
 
 #define TP_ENA		// Enable touchpad
-#define TFT_DMA		// Enable DMA for SPI2
+#define TFT_DMA		// Enable DMA for TFT
 // DMA settings:
 // RX (periph to mem): DMA1 ch4
 // TX (mem to periph): DMA1 ch5
 #define TFT_DMA_BUFF 1024
-#define SPI2_DR_8bit	*(__IO uint8_t*)&(SPI2->DR)
-#define SPI2_DR_16bit	(SPI2->DR)
-#define RGB5(r, g, b)	((r << 11) | (g << 6) | b)	// 5-bit RGB
+#define TFT_DR_8bit	*(__IO uint8_t*)&(TFT->DR)
+#define TFT_DR_16bit	(TFT->DR)
 
 struct sTFT
 {
@@ -40,21 +42,22 @@ struct sTFT
 #define TFTSCK_PIN 		13
 #define TFTCS_PORT 		GPIOB
 #define TFTCS_PIN 		12
+#define TFT				SPI2
 
 void TFT_init(void);
 #define TFT_Sel() 	PortReset(TFTCS_PORT,TFTCS_PIN)
 #define TFT_Free()	PortSet(TFTCS_PORT,TFTCS_PIN)
-#define TFT_Wait()	{while(SPI2->SR & SPI_SR_BSY);} //{while(SPI2->SR & SPI_SR_BSY);}
-#define TFT_Clear1(){(void)SPI2->DR;(void)SPI2->SR;}
-#define TFT_Clear() {while(SPI2->SR & SPI_SR_RXNE) (void)SPI2->DR;}
-#define TFT_8bit()	{SPI2->CR2 &= ~SPI_CR2_DS_3;}
-#define TFT_16bit()	{SPI2->CR2 |= SPI_CR2_DS_3;}
+#define TFT_Wait()	{while(TFT->SR & SPI_SR_BSY){}}
+#define TFT_Clear1(){(void)TFT->DR;(void)TFT->SR;}
+#define TFT_Clear() {while(TFT->SR & SPI_SR_RXNE){(void)TFT->DR;}(void)TFT->SR;}
+#define TFT_8bit()	{TFT->CR2 &= ~SPI_CR2_DS_3;}
+#define TFT_16bit()	{TFT->CR2 |= SPI_CR2_DS_3;}
 
-#define TFT_WRRAM_Start() {TFT_SendCmd(ST77XX_RAMWR, 0, 0); TFT_16bit(); TFT_Sel(); SPI2->CR2 |= SPI_CR2_TXDMAEN;}
-#define TFT_WRRAM_End() {SPI2->CR2 &= ~SPI_CR2_TXDMAEN; TFT_Free(); TFT_8bit();}
-
-
-#define ST_CMD_DELAY 0x80 // special signifier for command lists
+// Функции переключения в режим DMA и выхода из него.
+// Использовать перед и после функций SendBuffer(tosend);
+// Запрещено использовать прочие функции работы с экраном внутри этих определений
+#define TFT_WRRAM_Start() {TFT_SendCmd(ST77XX_RAMWR, 0, 0); TFT_16bit(); TFT_Sel(); TFT->CR2 |= SPI_CR2_TXDMAEN;}
+#define TFT_WRRAM_End() {TFT->CR2 &= ~SPI_CR2_TXDMAEN; TFT_Free(); TFT_8bit();}
 
 // Commands. Default mode: DC = 0
 // In this block all additional data writes in "DC=1"
@@ -91,8 +94,8 @@ void TFT_init(void);
 #define ST77XX_TEON 0x35		// Tearing effect line ON. 1 byte to write: b1 (-,-,-,-,-,-,-,TEM)
 #define ST77XX_MADCTL 0x36		// Memory data access control. 1 byte to write: b1 (MY, MX, MV, ML, RGB, 0, 0, 0)
 #define ST77XX_VSCRSADD 0x37	// Vertical scrolling start address. 2 bytes to write: VSP(16b)
-#define ST77XX_IDOFF 0x38		// Idle mode OFF
-#define ST77XX_IDON 0x39		// Idle mode ON
+#define ST77XX_IDMOFF 0x38		// Idle mode OFF
+#define ST77XX_IDMON 0x39		// Idle mode ON
 #define ST77XX_COLMOD 0x3A		// Interface pixel format. 1 byte to write: b1 (0, D6, D5, D4, 0, D2, D1, D0) - interface format
 #define ST77XX_RAMWRC 0x3C		// Memory write continue. 3 words to write: D1(16b), Dx(16b), Dn(16b)
 #define ST77XX_RAMRDC 0x3E		// Memory read continue. 3 words to read: Dummy(8b), D1(16b), Dx(16b), Dn(16b)

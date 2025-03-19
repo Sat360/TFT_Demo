@@ -4,13 +4,17 @@
 volatile uint8_t TFT_Params[6];
 volatile uint16_t TFT_TX[TFT_DMA_BUFF];
 
-volatile struct sTFT TFT;
+volatile struct sTFT display;
 
 void ST77XX_init(void);
 void TFT_SendByte(uint8_t data);
 void TFT_SendCmd(uint8_t cmd, uint8_t params, uint8_t delay);
+void SetOutRect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
+void SendBuffer(uint16_t count);
 
-void SetOutRect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
+// Задать прямоугольник, в котором будет рисоваться.
+// Координаты - включительно, то есть в точке x2,y2 тоже будет идти отрисовка
+void SetOutRect(const uint16_t x1, const uint16_t y1, const uint16_t x2, const uint16_t y2)
 {
 	// must be x1 <= x2, y1 <= y2
 	TFT_Params[0] = x1 >> 8;
@@ -26,16 +30,18 @@ void SetOutRect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
 	TFT_SendCmd(ST77XX_RASET, 4, 0);
 }
 
-void SendBuffer(uint16_t count)
+// Отправить в DMA буфер заданного размера
+void SendBuffer(const uint16_t count)
 {
 	DMA1_Channel5->CMAR = (uint32_t)&TFT_TX;
 	DMA1_Channel5->CNDTR = count;
-	TFT.busy = 1;
+	display.busy = 1;
 	DMA1_Channel5->CCR |= DMA_CCR_EN;
-	while(TFT.busy) {_wdr()};
+	while(display.busy) {_wdr()};
 	DMA1_Channel5->CCR &= ~DMA_CCR_EN;
 }
 
+// Залитый прямоугольник
 void FillRect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
 {
 	// Normalize order x1/x2 and y1/y2
@@ -69,12 +75,6 @@ void FillRect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color
 			TFT_TX[i] = color;
 	}
 	// Send data
-	/*
-	TFT_SendCmd(ST77XX_RAMWR, 0, 0);
-	TFT_16bit();
-	TFT_Sel();
-	SPI2->CR2 |= SPI_CR2_TXDMAEN;
-	*/
 	TFT_WRRAM_Start();
 	while(DrawLeft > 0)
 	{
@@ -86,137 +86,23 @@ void FillRect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color
 		DrawLeft -= tosend;
 	}
 	TFT_WRRAM_End();
-	/*
-	SPI2->CR2 &= ~SPI_CR2_TXDMAEN;
-	TFT_Free();
-	TFT_8bit();
-	*/
+
 }
 
-void test()
+void test(void)
 {
-	//
-	/*
-	TFT_Params[0] = 0;
-	TFT_Params[1] = 0;
-	TFT_Params[2] = 99 >> 8;
-	TFT_Params[3] = 99 & 0xFF;
-	TFT_SendCmd(ST77XX_CASET, 4, 0);
-
-	TFT_Params[0] = 0;
-	TFT_Params[1] = 0;
-	TFT_Params[2] = 99 >> 8;
-	TFT_Params[3] = 99 & 0xFF;
-	TFT_SendCmd(ST77XX_RASET, 4, 0);
-	
-	TFT_SendCmd(ST77XX_RAMWR, 0, 0);
-	*/
-	
 	FillRect(10, 10, 40, 40, RGB5(31, 0, 0));
 	FillRect(30, 30, 180, 180, RGB5(0, 31, 0));
 	FillRect(10, 150, 50, 230, RGB5(0, 0, 31));
 	
-	/*
-	for(uint16_t x = 0; x < 100; x++)
-		for(uint16_t y = 0; y < 50; y++)
-		{
-			uint8_t bx = x >> 5;
-			uint8_t by = y >> 5;
-			uint16_t r = bx*2 + by*8;
-			uint16_t g = x & 0x1F;
-			uint16_t b = y & 0x1F;
-			r = x >> 2;
-			g = y >> 2;
-			b = (x + y) >> 3;
-			TFT_TX[y*100 + x] = (r << 11) | (g << 6) | b;
-		}
-	
-	for(uint16_t x = 10; x < 90; x++)
-	{
-		
-		TFT_TX[50*100 + x] = 0xFFFF;
-		TFT_TX[49*100 + x] = 0xFFFF;
-		TFT_TX[51*100 + x] = 0xFFFF;
-	}
-	for(uint16_t x = 0; x < 30; x++)
-	{
-		TFT_TX[(20 + x)*100 + x + 60] = 0xFFFF;
-		TFT_TX[(20 + x)*100 + x + 59] = 0xFFFF;
-		TFT_TX[(19 + x)*100 + x + 60] = 0xFFFF;
-
-		TFT_TX[(80 - x)*100 + x + 60] = 0xFFFF;
-		TFT_TX[(80 - x)*100 + x + 59] = 0xFFFF;
-		TFT_TX[(81 - x)*100 + x + 60] = 0xFFFF;
-	}
-	
-	TFT_16bit();
-	DMA1_Channel5->CMAR = (uint32_t)&TFT_TX;
-	DMA1_Channel5->CNDTR = 5000;
-	TFT.busy = 1;
-	TFT_Sel();
-	DMA1_Channel5->CCR |= DMA_CCR_EN;
-	while(TFT.busy);
-	TFT_Free();
-	TFT_8bit();
-	*/
-	
-	/*
-	TFT_Sel();
-	for(uint16_t i = 0; i < 20000; i++)
-		SPI2_SendByte(i);
-	TFT_Free();
-	*/
-	
-	//
-	/*
-	TFT_Params[0] = 0;
-	TFT_Params[1] = 50;
-	TFT_Params[2] = 210 >> 8;
-	TFT_Params[3] = 210 & 0xFF;
-	SPI2_SendCmd(ST77XX_CASET, 4, 0);
-
-	TFT_Params[0] = 0;
-	TFT_Params[1] = 50;
-	TFT_Params[2] = 210 >> 8;
-	TFT_Params[3] = 210 & 0xFF;
-	SPI2_SendCmd(ST77XX_RASET, 4, 0);
-	
-	SPI2_SendCmd(ST77XX_RAMWR, 0, 0);
-	
-	TFT_Sel();
-	for(uint16_t i = 0; i < 2*160*160; i++)
-		SPI2_SendByte(i);
-	TFT_Free();
-	*/
-
-	/*
-	TFT_Params[0] = 0;
-	TFT_Params[1] = 50;
-	TFT_Params[2] = 210 >> 8;
-	TFT_Params[3] = 210 & 0xFF;
-	SPI2_SendCmd(ST77XX_CASET, 4, 0);
-
-	TFT_Params[0] = 0;
-	TFT_Params[1] = 50;
-	TFT_Params[2] = 210 >> 8;
-	TFT_Params[3] = 210 & 0xFF;
-	SPI2_SendCmd(ST77XX_RASET, 4, 0);
-
-	TFT_Params[0] = 0xFF;
-	TFT_Params[1] = 0xFF;
-	TFT_Params[2] = 0xFF;
-	TFT_Params[3] = 0xFF;
-	TFT_Params[4] = 0xFF;
-	TFT_Params[5] = 0xFF;
-	SPI2_SendCmd(ST77XX_RAMRD, 6, 0);
-	*/
+	TFT_SendCmd(ST77XX_IDMON, 0, 0);
 }
 
 void TFT_init(void)
 {
 	uint16_t temp_var;
 	
-	TFT.busy = 0;
+	display.busy = 0;
 
 	// Init GPIO
 	RCC->AHBENR |= RCC_AHBENR_GPIOBEN | RCC_AHBENR_GPIODEN; 
@@ -236,11 +122,11 @@ void TFT_init(void)
 	InitPin(TFTRESET_PORT, TFTRESET_PIN, GPIO_MODE_OUTPUT, GPIO_TYPE_PP, GPIO_SPEED_LOW, GPIO_PUPD_NONE);
 	InitPin(TFTDC_PORT, TFTDC_PIN, GPIO_MODE_OUTPUT, GPIO_TYPE_PP, GPIO_SPEED_LOW, GPIO_PUPD_NONE);
 	InitPin(TFTMOSI_PORT, TFTMOSI_PIN, GPIO_MODE_ALT, GPIO_TYPE_PP, GPIO_SPEED_HIGH, GPIO_PUPD_NONE);
-	InitPin(TFTMISO_PORT, TFTMISO_PIN, GPIO_MODE_ALT, GPIO_TYPE_PP, GPIO_SPEED_HIGH, GPIO_PUPD_PU);
+	//InitPin(TFTMISO_PORT, TFTMISO_PIN, GPIO_MODE_ALT, GPIO_TYPE_PP, GPIO_SPEED_HIGH, GPIO_PUPD_PU);
 	InitPin(TFTSCK_PORT, TFTSCK_PIN, GPIO_MODE_ALT, GPIO_TYPE_PP, GPIO_SPEED_HIGH, GPIO_PUPD_NONE);
 	InitPin(TFTCS_PORT, TFTCS_PIN, GPIO_MODE_OUTPUT, GPIO_TYPE_PP, GPIO_SPEED_LOW, GPIO_PUPD_NONE);
 	SetAltPin(TFTMOSI_PORT, TFTMOSI_PIN, 5);
-	SetAltPin(TFTMISO_PORT, TFTMISO_PIN, 5);
+	//SetAltPin(TFTMISO_PORT, TFTMISO_PIN, 5);
 	SetAltPin(TFTSCK_PORT, TFTSCK_PIN, 5);
 	TFT_Free();
 	
@@ -259,15 +145,15 @@ void TFT_init(void)
 	// Maximum display freq = 16ns = 62.5 MHz
 	// MSTR = master configuration
 	// CPOL, CPHA = polarity and phase
-	SPI2->CR1 = (SPI_CR1_SSM*1) | (SPI_CR1_SSI*1) | (SPI_CR1_BR_2*0) | (SPI_CR1_BR_1*0) | (SPI_CR1_BR_0*0) | SPI_CR1_MSTR | (SPI_CR1_CPOL*1) | (SPI_CR1_CPHA*1);
+	TFT->CR1 = (SPI_CR1_SSM*1) | (SPI_CR1_SSI*1) | (SPI_CR1_BR_2*0) | (SPI_CR1_BR_1*0) | (SPI_CR1_BR_0*1) | SPI_CR1_MSTR | (SPI_CR1_CPOL*1) | (SPI_CR1_CPHA*1);
 	// FRXTH - RXNE event on 8-bit receive
 	// DS_X - bit size
 	// TXEIE - TX empty interrupt enable
 	// TXDMAEN/RXDMAEN - enable DMA buffers
 	TFT_Clear();
-	SPI2->CR2 = ((0*SPI_CR2_FRXTH) | SPI_CR2_DS_0 | SPI_CR2_DS_1 | SPI_CR2_DS_2);
+	TFT->CR2 = ((0*SPI_CR2_FRXTH) | SPI_CR2_DS_0 | SPI_CR2_DS_1 | SPI_CR2_DS_2);
 	#ifdef TFT_DMA	
-	SPI2->CR2 |= (0*SPI_CR2_TXEIE) | (0*SPI_CR2_TXDMAEN);	
+	TFT->CR2 |= (0*SPI_CR2_TXEIE) | (0*SPI_CR2_TXDMAEN);	
 	DMA1->IFCR = 0xF << DMA_IFCR_CGIF5_Pos; // Clear DMA Interrupt flags
 	// PL - priority. 0/1/2/3 = low, med, high, vhigh
 	// MSIZE - memory size: 0/1/2 = 8/16/32 bit
@@ -278,7 +164,7 @@ void TFT_init(void)
 	// TCIE = transfer complete interrupt enable
 	// EN = channel enable
 	DMA1_Channel5->CCR = (0*DMA_CCR_PL_0) | (1*DMA_CCR_PL_1) | (1*DMA_CCR_MSIZE_0) | (0*DMA_CCR_MSIZE_1) | (1*DMA_CCR_PSIZE_0) | (0*DMA_CCR_PSIZE_1) | DMA_CCR_MINC | (1*DMA_CCR_DIR) | DMA_CCR_TCIE;
-	DMA1_Channel5->CPAR = (uint32_t)&(SPI2->DR);
+	DMA1_Channel5->CPAR = (uint32_t)&(TFT->DR);
 	NVIC_SetPriority(DMA1_Channel5_IRQn, TFT_DMA_Prio);	//set IRQ priority	
 	NVIC_EnableIRQ(DMA1_Channel5_IRQn);		//enable timer6 int.
 	#endif
@@ -286,9 +172,9 @@ void TFT_init(void)
 	// Clear bits
 	TFT_8bit();
 	TFT_Clear();
-	SPI2->SR = 0;
+	TFT->SR = 0;
 	// Enable
-	SPI2->CR1 |= SPI_CR1_SPE;
+	TFT->CR1 |= SPI_CR1_SPE;
 
 	// Reset TFT
 	Delay(25);
@@ -307,31 +193,31 @@ void TFT_init(void)
 	test();
 }
 
-void SPI2_SendByte(uint8_t data)
+void TFT_SendByte(const uint8_t data)
 {
 	TFT_Sel();
-	SPI2_DR_8bit = data;
+	TFT_DR_8bit = data;
 	TFT_Wait();
 	TFT_Clear();
 	TFT_Free();
 }
 
 // Send command with 0 params
-void TFT_SendCmd(uint8_t cmd, uint8_t params, uint8_t delay)
+void TFT_SendCmd(const uint8_t cmd, const uint8_t params, const uint8_t delay)
 {
 	PortReset(TFTDC_PORT, TFTDC_PIN);
 	TFT_Sel();
 	TFT_Clear();
 
 	TFT_Wait();
-	SPI2_DR_8bit = cmd;
+	TFT_DR_8bit = cmd;
 	TFT_Wait();
 	TFT_Clear();
 	PortSet(TFTDC_PORT, TFTDC_PIN);
 	
 	for(uint8_t i = 0; i < params; i++)
 	{
-		SPI2_DR_8bit = TFT_Params[i];
+		TFT_DR_8bit = TFT_Params[i];
 		TFT_Wait();
 		TFT_Clear1();
 	}
@@ -348,8 +234,6 @@ void ST77XX_init(void)
 	
 	// Out of sleep mode
 	TFT_SendCmd(ST77XX_SLPOUT, 0, 10);
-	
-	//SPI2_SendCmd(ST77XX_RDDID, 4, 0);
 	
 	// Set color mode.
 	// page 224
@@ -394,5 +278,5 @@ void ST77XX_init(void)
 void DMA1_Channel5_IRQHandler()
 {
 	DMA1->IFCR = DMA_IFCR_CGIF5 | DMA_IFCR_CTCIF5 | DMA_IFCR_CHTIF5 | DMA_IFCR_CTEIF5;
-	TFT.busy = 0;
+	display.busy = 0;
 }

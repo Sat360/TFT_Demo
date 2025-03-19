@@ -33,7 +33,7 @@ void TIM6_DAC_IRQHandler(void)
 	}
 }
 
-void Delay(uint16_t delay)
+void Delay(const uint16_t delay)
 {
 	st.delay = delay;
 	while(st.delay)

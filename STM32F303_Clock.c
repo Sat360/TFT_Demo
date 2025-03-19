@@ -47,8 +47,8 @@ void SystemClock_Config(const uint8_t Src, uint8_t Freq)
 	RCC->CFGR3 = 0;
 	// Set flash latency to minimum
 	FLASH->ACR &= ~FLASH_ACR_LATENCY;
-	FLASH->ACR |= FLASH_ACR_LATENCY_1;
-	while((FLASH->ACR & FLASH_ACR_LATENCY) != FLASH_ACR_LATENCY_1);
+	FLASH->ACR |= FLASH_ACR_LATENCY_2;
+	while((FLASH->ACR & FLASH_ACR_LATENCY) != FLASH_ACR_LATENCY_2);
 	
 	// Change source oscillator
 	if(Src == 1)
@@ -90,6 +90,30 @@ void SystemClock_Config(const uint8_t Src, uint8_t Freq)
 		RCC->CFGR &= ~(RCC_CFGR_PLLSRC | RCC_CFGR_PLLMUL);
 		RCC->CFGR |= (mul - 2) << RCC_CFGR_PLLMUL_Pos;
 	}
+	
+	// Set flash latency
+	// 0: 0 - 24 MHz
+	// 1: 24 - 48 MHz
+	// 2: >48 MHz
+	if(Freq <= 24)
+	{
+		FLASH->ACR &= ~FLASH_ACR_LATENCY;
+		FLASH->ACR |= FLASH_ACR_LATENCY_0;
+		while((FLASH->ACR & FLASH_ACR_LATENCY) != FLASH_ACR_LATENCY_0);
+	}
+	else if(Freq <= 48)
+	{
+		FLASH->ACR &= ~FLASH_ACR_LATENCY;
+		FLASH->ACR |= FLASH_ACR_LATENCY_1;
+		while((FLASH->ACR & FLASH_ACR_LATENCY) != FLASH_ACR_LATENCY_1);
+	}
+	else
+	{
+		FLASH->ACR &= ~FLASH_ACR_LATENCY;
+		FLASH->ACR |= FLASH_ACR_LATENCY_2;
+		while((FLASH->ACR & FLASH_ACR_LATENCY) != FLASH_ACR_LATENCY_2);
+	}
+	
 	// Enable PLL
 	if(Freq >= 16)
 	{
