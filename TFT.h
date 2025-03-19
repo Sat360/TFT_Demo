@@ -11,9 +11,10 @@ void TFT_init(void);
 // DMA settings:
 // RX (periph to mem): DMA1 ch4
 // TX (mem to periph): DMA1 ch5
-#define TFT_DMA_BUFF 10000
+#define TFT_DMA_BUFF 1024
 #define SPI2_DR_8bit	*(__IO uint8_t*)&(SPI2->DR)
 #define SPI2_DR_16bit	(SPI2->DR)
+#define RGB5(r, g, b)	((r << 11) | (g << 6) | b)	// 5-bit RGB
 
 struct sTFT
 {
@@ -48,6 +49,9 @@ void TFT_init(void);
 #define TFT_Clear() {while(SPI2->SR & SPI_SR_RXNE) (void)SPI2->DR;}
 #define TFT_8bit()	{SPI2->CR2 &= ~SPI_CR2_DS_3;}
 #define TFT_16bit()	{SPI2->CR2 |= SPI_CR2_DS_3;}
+
+#define TFT_WRRAM_Start() {TFT_SendCmd(ST77XX_RAMWR, 0, 0); TFT_16bit(); TFT_Sel(); SPI2->CR2 |= SPI_CR2_TXDMAEN;}
+#define TFT_WRRAM_End() {SPI2->CR2 &= ~SPI_CR2_TXDMAEN; TFT_Free(); TFT_8bit();}
 
 
 #define ST_CMD_DELAY 0x80 // special signifier for command lists
