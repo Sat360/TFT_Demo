@@ -1424,6 +1424,9 @@
         <name>$PROJ_DIR$\Buttons.c</name>
     </file>
     <file>
+        <name>$PROJ_DIR$\fonts.c</name>
+    </file>
+    <file>
         <name>$PROJ_DIR$\GPIO.c</name>
     </file>
     <file>

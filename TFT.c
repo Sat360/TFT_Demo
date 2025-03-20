@@ -5,6 +5,7 @@ volatile uint8_t TFT_Params[6];
 volatile uint16_t TFT_TX[TFT_DMA_BUFF];
 
 volatile struct sTFT display;
+FontDef *font;
 
 void ST77XX_init(void);
 void TFT_SendByte(uint8_t data);
@@ -89,6 +90,137 @@ void FillRect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, const uint16_t
 		DrawLeft -= tosend;
 	}
 	TFT_WRRAM_End();
+}
+
+void WriteChar(char c, int16_t x, int16_t y, uint16_t color, uint16_t bgcolor)
+{
+	// Обрезание символа в экран
+	uint16_t x_font1, x_font2, y_font1, y_font2;	// Точки шрифта, которые будут выводиться. Правые точки - "исключительно" - не выводятся
+	uint16_t x_scr1, x_scr2, y_scr1, y_scr2;		// Точки экрана, куда будет выводиться. Правые точки - включительно, будут затронуты
+	if((x >= 0) && ((x + font->width) <= TFT_WIDTH))
+	{
+		x_font1 = 0;
+		x_font2 = font->width;
+		x_scr1 = x;
+		x_scr2 = x + font->width - 1;
+	}
+	else if(x < -font->width)
+	{
+		return;
+	}
+	else if(x - font->width >= TFT_WIDTH)
+	{
+		return;
+	}
+	else if(x < 0)
+	{
+		x_font1 = -x;
+		x_font2 = font->width;
+		x_scr1 = 0;
+		x_scr2 = font->width + x - 1;
+	}
+	else
+	{
+		// ((x + font->width) > TFT_WIDTH)
+		x_font1 = 0;
+		x_font2 = TFT_WIDTH - x;
+		x_scr1 = TFT_WIDTH - x_font2;
+		x_scr2 = TFT_WIDTH - 1;
+	}
+	if((y >= 0) && ((y + font->height) <= TFT_HEIGHT))
+	{
+		y_font1 = 0;
+		y_font2 = font->height;
+		y_scr1 = y;
+		y_scr2 = y + font->height - 1;
+	}
+	else if(y < -font->height)
+	{
+		return;
+	}
+	else if(y - font->height >= TFT_HEIGHT)
+	{
+		return;
+	}
+	else if(y < 0)
+	{
+		y_font1 = -y;
+		y_font2 = font->height;
+		y_scr1 = 0;
+		y_scr2 = font->height + y - 1;
+	}
+	else
+	{
+		// ((y + font->height) > TFT_HEIGHT)
+		y_font1 = 0;
+		y_font2 = TFT_HEIGHT - y;
+		y_scr1 = TFT_HEIGHT - y_font2;
+		y_scr2 = TFT_HEIGHT - 1;
+	}
+	
+	// Out
+	SetOutRect(x_scr1, y_scr1, x_scr2, y_scr2);
+	uint32_t rdata;
+	uint16_t volatile* out = &TFT_TX[0];
+	for(uint8_t i = y_font1; i < y_font2; i++)
+	{
+		rdata = font->data[(c - ' ') * font->height + i];
+		rdata <<= x_font1;
+		for(uint16_t j = x_font1; j < x_font2; j++)
+		{
+			if(rdata & 0x8000)
+			{
+				*out++ = color;
+			}
+			else
+			{
+				*out++ = bgcolor;
+			}
+			rdata <<= 1;			
+		}
+	}
+	// SendData
+	TFT_WRRAM_Start();
+	SendBuffer((x_font2 - x_font1) * (y_font2 - y_font1));
+	TFT_WRRAM_End();
+	
+	
+	/*
+	// Упрощенный вариант, без обрезания
+	SetOutRect(x, y, x + font->width - 1, y + font->height - 1);
+	uint32_t rdata;
+	uint16_t volatile* out = &TFT_TX[0];
+	for(uint8_t i = 0; i < font->height; i ++)
+	{
+		rdata = font->data[(c - ' ') * font->height + i];
+		for(uint16_t j = 0; j < font->width; j++)
+		{
+			if(rdata & 0x8000)
+			{
+				*out++ = color;
+			}
+			else
+			{
+				*out++ = bgcolor;
+			}
+			rdata <<= 1;
+		}
+	}
+	// SendData
+	TFT_WRRAM_Start();
+	SendBuffer(font->width * font->height);
+	TFT_WRRAM_End();
+	*/
+}
+
+void WriteString(const char* str, int16_t x, int16_t y, uint16_t color, uint16_t bgcolor)
+{
+	while(*str)
+	{
+		WriteChar(*str, x, y, color, bgcolor);
+		str++;
+		x += font->width;
+	}
 }
 
 void DrawPixel(uint16_t x, uint16_t y, uint16_t color)
@@ -301,6 +433,18 @@ void test(void)
 	DrawLine(188, 219, 52, 219, red);
 	DrawLine(52, 219, 10, 90, red);
 	DrawLine(10, 90, 120, 10, red);
+	
+	font = &Font_7x10;
+	//WriteChar('7', -2, 315, RGB5(31, 0, 0), RGB5(0, 0, 0));
+	WriteString("7x10", 10, 10, RGB5(0, 31, 0), 0);
+	
+	font = &Font_11x18;
+	WriteString("11x18", 150, 10, RGB5(0, 31, 31), 0);
+
+	font = &Font_16x26;
+	WriteString("Font_16x26", 10, 230, RGB5(31, 31, 31), RGB5(0, 0, 31));
+	
+	FillRect(230, 310, 239, 319, 0);
 }
 
 void TFT_init(void)
