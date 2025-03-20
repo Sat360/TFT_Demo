@@ -41,3 +41,15 @@ void Delay(const uint16_t delay)
 		_wdr();
 	}
 }
+
+void Delayus(uint32_t delay)
+{
+	SysTick->LOAD = (SystemCoreClock / 1000000) * delay;
+	SysTick->VAL = 0;
+	SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_ENABLE_Msk;
+	while(!(SysTick->CTRL & SysTick_CTRL_COUNTFLAG_Msk))
+	{
+		_wdr();
+	}
+	SysTick->CTRL = 0;
+}

@@ -3,6 +3,7 @@
 
 void TimerSys_init(void);
 void Delay(uint16_t delay);
+void Delayus(uint32_t delay);
 
 struct sSysTimerFlags
 {

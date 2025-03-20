@@ -11,6 +11,7 @@ void TFT_SendByte(uint8_t data);
 void TFT_SendCmd(uint8_t cmd, uint8_t params, uint8_t delay);
 void SetOutRect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
 void SendBuffer(uint16_t count);
+void SwapPoints(uint16_t *x1, uint16_t *y1, uint16_t *x2, uint16_t *y2);
 
 // Задать прямоугольник, в котором будет рисоваться.
 // Координаты - включительно, то есть в точке x2,y2 тоже будет идти отрисовка
@@ -42,10 +43,14 @@ void SendBuffer(const uint16_t count)
 }
 
 // Залитый прямоугольник
-void FillRect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
+void FillRect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, const uint16_t color)
 {
 	// Normalize order x1/x2 and y1/y2
 	uint16_t dummy;
+	x1 = TFT_LIMITX(x1);
+	y1 = TFT_LIMITY(y1);
+	x2 = TFT_LIMITX(x2);
+	y2 = TFT_LIMITY(y2);
 	if(x2 < x1)
 	{
 		dummy = x1;
@@ -79,23 +84,223 @@ void FillRect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color
 	while(DrawLeft > 0)
 	{
 		// Calc size to send
-		uint16_t tosend = DrawLeft;
-		if(tosend > TFT_DMA_BUFF)
-			tosend = TFT_DMA_BUFF;
+		uint16_t tosend = (DrawLeft > TFT_DMA_BUFF) ? TFT_DMA_BUFF : DrawLeft;
 		SendBuffer(tosend);
 		DrawLeft -= tosend;
 	}
 	TFT_WRRAM_End();
+}
 
+void DrawPixel(uint16_t x, uint16_t y, uint16_t color)
+{
+	x = TFT_LIMITX(x);
+	y = TFT_LIMITY(y);
+	SetOutRect(x, y, x, y);
+	TFT_Params[0] = color >> 8;
+	TFT_Params[1] = color & 0xFF;
+	TFT_SendCmd(ST77XX_RAMWR, 2, 0);
+}
+
+void DrawLine(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
+{
+	x1 = TFT_LIMITX(x1);
+	x2 = TFT_LIMITX(x2);
+	y1 = TFT_LIMITX(y1);
+	y2 = TFT_LIMITX(y2);
+	float k, y0, x0;
+	int16_t dy = y2 - y1;
+	int16_t dx = x2 - x1;
+	uint16_t dummy;
+	if((dx == 0) || (dy == 0))
+	{
+		FillRect(x1, y1, x2, y2, color);
+		return;
+	}
+	if(_ABS(dx) >= _ABS(dy))
+	{
+		// Horizontal
+		k = (float)dy / dx;
+		y0 = y1 - k * x1;
+		if(x1 > x2)
+		{
+			dummy = x1;
+			x1 = x2;
+			x2 = dummy;
+		}
+		for(uint16_t x = x1; x <= x2; x++)
+			DrawPixel(x, (uint16_t)(k * x + y0), color);
+	}
+	else
+	{
+		k = (float)dx / dy;
+		x0 = x1 - k * y1;
+		if(y1 > y2)
+		{
+			dummy = y1;
+			y1 = y2;
+			y2 = dummy;
+		}
+		for(uint16_t y = y1; y <= y2; y++)
+			DrawPixel((uint16_t)(k * y + x0), y, color);
+	}
+}
+
+void SwapPoints(uint16_t *x1, uint16_t *y1, uint16_t *x2, uint16_t *y2)
+{
+	uint16_t dummy;
+	dummy = *x1;
+	*x1 = *x2;
+	*x2 = dummy;
+	dummy = *y1;
+	*y1 = *y2;
+	*y2 = dummy;
+}
+
+void DrawTriangleFill(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t x3, uint16_t y3, uint16_t color)
+{
+	x1 = TFT_LIMITX(x1);
+	x2 = TFT_LIMITX(x2);
+	x3 = TFT_LIMITX(x3);
+	y1 = TFT_LIMITX(y1);
+	y2 = TFT_LIMITX(y2);
+	y3 = TFT_LIMITX(y3);
+	
+	// Two points merged to one?
+	if((x1 == x2) && (y1 == y2))
+	{
+		DrawLine(x1, y1, x3, y3, color);
+		return;
+	}
+	if((x1 == x3) && (y1 == y3))
+	{
+		DrawLine(x1, y1, x2, y2, color);
+		return;
+	}
+	if((x2 == x3) && (y2 == y3))
+	{
+		DrawLine(x1, y1, x2, y2, color);
+		return;
+	}
+	// All X are same?
+	if((x1 == x2) && (x1 == x3))
+	{
+		uint16_t miny, maxy;
+		miny = y1 < y2 ? y1 : y2;
+		miny = miny < y3 ? miny: y3;
+		maxy = y1 > y2 ? y1 : y2;
+		maxy = maxy > y3 ? maxy : y3;
+		FillRect(x1, miny, x1, maxy, color);
+		return;
+	}
+	// ALl Y are same?
+	if((y1 == y2) && (y1 == y3))
+	{
+		uint16_t minx, maxx;
+		minx = x1 < x2 ? x1 : x2;
+		minx = minx < x3 ? minx: x3;
+		maxx = x1 > x2 ? x1 : x2;
+		maxx = maxx > x3 ? maxx : x3;
+		FillRect(minx, y1, maxx, y1, color);
+		return;
+	}
+	
+	// Set points left to right
+	if(x1 > x2)
+		SwapPoints(&x1, &y1, &x2, &y2);
+	if(x1 > x3)
+		SwapPoints(&x1, &y1, &x3, &y3);
+	if(x2 > x3)
+		SwapPoints(&x2, &y2, &x3, &y3);
+
+	int16_t dx1, dx2, dy1, dy2;
+	float k1, k2, y01, y02;
+	int16_t ys, ye;
+	// Draw left triangle
+	if(x1 == x2)
+	{
+		FillRect(x1, y1, x2, y2, color);
+	}
+	else
+	{
+		dx1 = x2 - x1;
+		dy1 = y2 - y1;
+		dx2 = x3 - x1;
+		dy2 = y3 - y1;
+		k1 = (float)dy1 / dx1;
+		k2 = (float)dy2 / dx2;
+		y01 = y1 - k1 * x1;
+		y02 = y1 - k2 * x1;
+		for(uint16_t x = x1; x <= x2; x++)
+		{
+			ys = (uint16_t)(k1 * x + y01);
+			ye = (uint16_t)(k2 * x + y02);
+			FillRect(x, ys, x, ye, color);
+		}
+	}
+	// Draw right triangle
+	if(x2 == x3)
+	{
+		FillRect(x2, y2, x2, y3, color);
+	}
+	else
+	{
+		dx1 = x3 - x2;
+		dy1 = y3 - y2;
+		dx2 = x3 - x1;
+		dy2 = y3 - y1;
+		k1 = (float)dy1 / dx1;
+		k2 = (float)dy2 / dx2;
+		y01 = y3 - k1 * x3;
+		y02 = y3 - k2 * x3;
+		for(uint16_t x = x2; x <= x3; x++)
+		{
+			ys = (uint16_t)(k1 * x + y01);
+			ye = (uint16_t)(k2 * x + y02);
+			FillRect(x, ys, x, ye, color);
+		}
+	}
+}
+
+void TFT_Idle(const uint8_t param)
+{
+	if(param)
+		TFT_SendCmd(ST77XX_IDMON, 0, 0);
+	else
+		TFT_SendCmd(ST77XX_IDMOFF, 0, 0);
 }
 
 void test(void)
 {
-	FillRect(10, 10, 40, 40, RGB5(31, 0, 0));
+	/*
+	FillRect(0, 0, TFT_WIDTH - 1, TFT_HEIGHT - 1, RGB5(31, 0, 0));
 	FillRect(30, 30, 180, 180, RGB5(0, 31, 0));
 	FillRect(10, 150, 50, 230, RGB5(0, 0, 31));
+	FillRect(95, 95, 105, 105, RGB5(0, 31, 31));
+
+	DrawPixel(100, 100, 0);
+	DrawPixel(101, 100, 0);
+	DrawPixel(99, 100, 0);
+	DrawPixel(100, 101, 0);
+	DrawPixel(100, 99, 0);
 	
-	TFT_SendCmd(ST77XX_IDMON, 0, 0);
+	DrawLine(10, 10, 100, 20, 0);
+	DrawLine(10, 10, 20, 100, 0);
+	
+	DrawTriangleFill(10, 10, 100, 20, 50, 100, 0);
+	*/
+	uint16_t red = RGB5(31, 0, 0);
+	FillRect(0, 0, TFT_WIDTH - 1, TFT_HEIGHT - 1, 0);
+	DrawTriangleFill(94, 90, 120, 10, 146, 90, red);
+	DrawTriangleFill(10, 90, 78, 139, 94, 90, red);
+	DrawTriangleFill(146, 90, 162, 139, 230, 90, red);
+	DrawTriangleFill(52, 219, 78, 139, 120, 170, red);
+	DrawTriangleFill(120, 170, 162, 139, 188, 219, red);
+	
+	DrawLine(120, 10, 230, 90, red);
+	DrawLine(230, 90, 188, 219, red);
+	DrawLine(188, 219, 52, 219, red);
+	DrawLine(52, 219, 10, 90, red);
+	DrawLine(10, 90, 120, 10, red);
 }
 
 void TFT_init(void)
@@ -118,13 +323,13 @@ void TFT_init(void)
 	InitPin(TPIRQ_PORT, TPIRQ_PIN, GPIO_MODE_INPUT, GPIO_TYPE_PP, GPIO_SPEED_LOW, GPIO_PUPD_NONE);
 	InitPin(TPCS_PORT, TPCS_PIN, GPIO_MODE_OUTPUT, GPIO_TYPE_PP, GPIO_SPEED_HIGH, GPIO_PUPD_NONE);
 	#endif // TP_ENA
-	InitPin(TFTBL_PORT, TFTBL_PIN, GPIO_MODE_OUTPUT, GPIO_TYPE_PP, GPIO_SPEED_LOW, GPIO_PUPD_NONE);
-	InitPin(TFTRESET_PORT, TFTRESET_PIN, GPIO_MODE_OUTPUT, GPIO_TYPE_PP, GPIO_SPEED_LOW, GPIO_PUPD_NONE);
-	InitPin(TFTDC_PORT, TFTDC_PIN, GPIO_MODE_OUTPUT, GPIO_TYPE_PP, GPIO_SPEED_LOW, GPIO_PUPD_NONE);
+	InitPin(TFTBL_PORT, TFTBL_PIN, GPIO_MODE_OUTPUT, GPIO_TYPE_PP, GPIO_SPEED_HIGH, GPIO_PUPD_NONE);
+	InitPin(TFTRESET_PORT, TFTRESET_PIN, GPIO_MODE_OUTPUT, GPIO_TYPE_PP, GPIO_SPEED_HIGH, GPIO_PUPD_NONE);
+	InitPin(TFTDC_PORT, TFTDC_PIN, GPIO_MODE_OUTPUT, GPIO_TYPE_PP, GPIO_SPEED_HIGH, GPIO_PUPD_NONE);
 	InitPin(TFTMOSI_PORT, TFTMOSI_PIN, GPIO_MODE_ALT, GPIO_TYPE_PP, GPIO_SPEED_HIGH, GPIO_PUPD_NONE);
 	//InitPin(TFTMISO_PORT, TFTMISO_PIN, GPIO_MODE_ALT, GPIO_TYPE_PP, GPIO_SPEED_HIGH, GPIO_PUPD_PU);
 	InitPin(TFTSCK_PORT, TFTSCK_PIN, GPIO_MODE_ALT, GPIO_TYPE_PP, GPIO_SPEED_HIGH, GPIO_PUPD_NONE);
-	InitPin(TFTCS_PORT, TFTCS_PIN, GPIO_MODE_OUTPUT, GPIO_TYPE_PP, GPIO_SPEED_LOW, GPIO_PUPD_NONE);
+	InitPin(TFTCS_PORT, TFTCS_PIN, GPIO_MODE_OUTPUT, GPIO_TYPE_PP, GPIO_SPEED_HIGH, GPIO_PUPD_NONE);
 	SetAltPin(TFTMOSI_PORT, TFTMOSI_PIN, 5);
 	//SetAltPin(TFTMISO_PORT, TFTMISO_PIN, 5);
 	SetAltPin(TFTSCK_PORT, TFTSCK_PIN, 5);
@@ -266,6 +471,9 @@ void ST77XX_init(void)
 	
 	// Normal display ON
 	TFT_SendCmd(ST77XX_NORON, 0, 0);
+	
+	// No idle mode
+	TFT_SendCmd(ST77XX_IDMOFF, 0, 10);
 	
 	// Main display turn ON
 	TFT_SendCmd(ST77XX_DISPON, 0, 0);

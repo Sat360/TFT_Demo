@@ -5,16 +5,25 @@
 #include "GPIO.h"
 
 void TFT_init(void);
-void FillRect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color);
+void TFT_Idle(const uint8_t param);
+void FillRect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, const uint16_t color);
+void DrawPixel(uint16_t x, uint16_t y, uint16_t color);
+void DrawLine(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color);
+void DrawTriangleFill(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t x3, uint16_t y3, uint16_t color);
 
-#define RGB5(r, g, b)	(((r) << 11) | ((g) << 6) | (b))	// 5-bit RGB
+#define TFT_WIDTH 240
+#define TFT_HEIGHT 320
+#define TFT_LIMITX(x) (((x) >= TFT_WIDTH) ? TFT_WIDTH - 1 : (x))
+#define TFT_LIMITY(y) (((y) >= TFT_HEIGHT) ? TFT_HEIGHT - 1 : (y))
+#define RGB5(r, g, b)	(uint16_t)((((uint16_t)r) << 11) | (((uint16_t)g) << 6) | ((uint16_t)b))	// 5-bit RGB
+#define _ABS(x) ((x) > 0 ? (x) : (-x))
 
 #define TP_ENA		// Enable touchpad
 #define TFT_DMA		// Enable DMA for TFT
 // DMA settings:
 // RX (periph to mem): DMA1 ch4
 // TX (mem to periph): DMA1 ch5
-#define TFT_DMA_BUFF 1024
+#define TFT_DMA_BUFF 8
 #define TFT_DR_8bit	*(__IO uint8_t*)&(TFT->DR)
 #define TFT_DR_16bit	(TFT->DR)
 
@@ -45,7 +54,7 @@ struct sTFT
 #define TFT				SPI2
 
 void TFT_init(void);
-#define TFT_Sel() 	PortReset(TFTCS_PORT,TFTCS_PIN)
+#define TFT_Sel() 	{Delayus(25);PortReset(TFTCS_PORT,TFTCS_PIN);} // Delay 19us minimum. Set 22us.
 #define TFT_Free()	PortSet(TFTCS_PORT,TFTCS_PIN)
 #define TFT_Wait()	{while(TFT->SR & SPI_SR_BSY){}}
 #define TFT_Clear1(){(void)TFT->DR;(void)TFT->SR;}
