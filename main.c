@@ -33,6 +33,7 @@ int main(void)
 			st.Flags.f1s = 0;
 			led++;
 		}
+		TP_Read();
 	}
 }
 

@@ -13,6 +13,8 @@ void DrawLine(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color
 void DrawTriangleFill(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t x3, uint16_t y3, uint16_t color);
 void WriteChar(char c, int16_t x, int16_t y, uint16_t color, uint16_t bgcolor);
 
+void TP_Read(void);
+
 #define TFT_WIDTH 240
 #define TFT_HEIGHT 320
 #define TFT_LIMITX(x) (((x) >= TFT_WIDTH) ? TFT_WIDTH - 1 : (x))
@@ -33,6 +35,15 @@ struct sTFT
 {
 	uint8_t busy;
 };
+
+#ifdef TP_ENA
+struct sTP
+{
+	uint16_t x;
+	uint16_t y;
+	uint8_t down;
+};
+#endif
 
 // Define pins
 #define TPIRQ_PORT 		GPIOD
@@ -58,6 +69,8 @@ struct sTFT
 void TFT_init(void);
 #define TFT_Sel() 	{Delayus(25);PortReset(TFTCS_PORT,TFTCS_PIN);} // Delay 19us minimum. Set 22us.
 #define TFT_Free()	PortSet(TFTCS_PORT,TFTCS_PIN)
+#define TP_Sel() 	{Delayus(25);PortReset(TPCS_PORT,TPCS_PIN);} // Delay 19us minimum. Set 22us.
+#define TP_Free()	PortSet(TPCS_PORT,TPCS_PIN)
 #define TFT_Wait()	{while(TFT->SR & SPI_SR_BSY){}}
 #define TFT_Clear1(){(void)TFT->DR;(void)TFT->SR;}
 #define TFT_Clear() {while(TFT->SR & SPI_SR_RXNE){(void)TFT->DR;}(void)TFT->SR;}
@@ -135,4 +148,9 @@ void TFT_init(void);
 #define ST77XX_RDID3 0xDC
 #define ST77XX_RDID4 0xDD 
 
+#define TP_MEASCNT 16
+#define TP_READX 0xD0
+#define TP_READY 0x90
+	
+	
 #endif // __TFT_H__

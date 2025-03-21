@@ -6,6 +6,9 @@ volatile uint16_t TFT_TX[TFT_DMA_BUFF];
 
 volatile struct sTFT display;
 FontDef *font;
+#ifdef TP_ENA
+volatile struct sTP tp;
+#endif
 
 void ST77XX_init(void);
 void TFT_SendByte(uint8_t data);
@@ -13,6 +16,7 @@ void TFT_SendCmd(uint8_t cmd, uint8_t params, uint8_t delay);
 void SetOutRect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
 void SendBuffer(uint16_t count);
 void SwapPoints(uint16_t *x1, uint16_t *y1, uint16_t *x2, uint16_t *y2);
+void TFT_ReadArray(volatile uint8_t* data, uint8_t count);
 
 // Задать прямоугольник, в котором будет рисоваться.
 // Координаты - включительно, то есть в точке x2,y2 тоже будет идти отрисовка
@@ -81,7 +85,11 @@ void FillRect(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, const uint16_t
 			TFT_TX[i] = color;
 	}
 	// Send data
-	TFT_WRRAM_Start();
+	//TFT_WRRAM_Start();
+	TFT_SendCmd(ST77XX_RAMWR, 0, 0); 
+	TFT_16bit(); 
+	TFT_Sel(); 
+	TFT->CR2 |= SPI_CR2_TXDMAEN;
 	while(DrawLeft > 0)
 	{
 		// Calc size to send
@@ -444,7 +452,7 @@ void test(void)
 	font = &Font_16x26;
 	WriteString("Font_16x26", 10, 230, RGB5(31, 31, 31), RGB5(0, 0, 31));
 	
-	FillRect(230, 310, 239, 319, 0);
+	//FillRect(239 - 3, 320 - 3, 239 + 3, 320 + 3, RGB5(31, 31, 31));	
 }
 
 void TFT_init(void)
@@ -452,6 +460,11 @@ void TFT_init(void)
 	uint16_t temp_var;
 	
 	display.busy = 0;
+	#ifdef TP_ENA
+	tp.down = 0;
+	tp.x = 0;
+	tp.y = 0;
+	#endif
 
 	// Init GPIO
 	RCC->AHBENR |= RCC_AHBENR_GPIOBEN | RCC_AHBENR_GPIODEN; 
@@ -471,11 +484,11 @@ void TFT_init(void)
 	InitPin(TFTRESET_PORT, TFTRESET_PIN, GPIO_MODE_OUTPUT, GPIO_TYPE_PP, GPIO_SPEED_HIGH, GPIO_PUPD_NONE);
 	InitPin(TFTDC_PORT, TFTDC_PIN, GPIO_MODE_OUTPUT, GPIO_TYPE_PP, GPIO_SPEED_HIGH, GPIO_PUPD_NONE);
 	InitPin(TFTMOSI_PORT, TFTMOSI_PIN, GPIO_MODE_ALT, GPIO_TYPE_PP, GPIO_SPEED_HIGH, GPIO_PUPD_NONE);
-	//InitPin(TFTMISO_PORT, TFTMISO_PIN, GPIO_MODE_ALT, GPIO_TYPE_PP, GPIO_SPEED_HIGH, GPIO_PUPD_PU);
+	InitPin(TFTMISO_PORT, TFTMISO_PIN, GPIO_MODE_ALT, GPIO_TYPE_PP, GPIO_SPEED_HIGH, GPIO_PUPD_PU);
 	InitPin(TFTSCK_PORT, TFTSCK_PIN, GPIO_MODE_ALT, GPIO_TYPE_PP, GPIO_SPEED_HIGH, GPIO_PUPD_NONE);
 	InitPin(TFTCS_PORT, TFTCS_PIN, GPIO_MODE_OUTPUT, GPIO_TYPE_PP, GPIO_SPEED_HIGH, GPIO_PUPD_NONE);
 	SetAltPin(TFTMOSI_PORT, TFTMOSI_PIN, 5);
-	//SetAltPin(TFTMISO_PORT, TFTMISO_PIN, 5);
+	SetAltPin(TFTMISO_PORT, TFTMISO_PIN, 5);
 	SetAltPin(TFTSCK_PORT, TFTSCK_PIN, 5);
 	TFT_Free();
 	
@@ -501,6 +514,8 @@ void TFT_init(void)
 	// TXDMAEN/RXDMAEN - enable DMA buffers
 	TFT_Clear();
 	TFT->CR2 = ((0*SPI_CR2_FRXTH) | SPI_CR2_DS_0 | SPI_CR2_DS_1 | SPI_CR2_DS_2);
+	
+	
 	#ifdef TFT_DMA	
 	TFT->CR2 |= (0*SPI_CR2_TXEIE) | (0*SPI_CR2_TXDMAEN);	
 	DMA1->IFCR = 0xF << DMA_IFCR_CGIF5_Pos; // Clear DMA Interrupt flags
@@ -550,6 +565,87 @@ void TFT_SendByte(const uint8_t data)
 	TFT_Clear();
 	TFT_Free();
 }
+
+#ifdef TP_ENA
+void TP_Read(void)
+{	
+	TP_Sel();
+	TFT_16bit();
+	TFT_Wait();
+	TFT_Clear();
+	
+	uint8_t nIRQ = 0;
+	uint16_t b;
+	uint16_t accX = 0;
+	uint16_t accY = 0;
+	for(uint8_t i = 0; i < TP_MEASCNT; i++)
+	{
+		// Start ADC if not started yet
+		// Read X
+		TFT_DR_16bit = TP_READX << 8;
+		TFT_Wait();
+		TFT_Clear1();
+		
+		if(TPIRQ_PORT->IDR & (1 << TPIRQ_PIN))
+			break;
+		nIRQ++;
+
+		// Get first byte
+		TFT_DR_16bit = 0;
+		TFT_Wait();
+		b = TFT_DR_16bit;  // Read 7 LO bit
+		b <<= 5;
+		accX += b;
+		
+		// Get second byte
+		TFT_DR_16bit = 0;
+		TFT_Wait();
+		b = TFT_DR_16bit;  // Read 5 HI bit
+		b >>= 11;
+		accX += b;
+
+		// Read Y
+		TFT_DR_16bit = TP_READY << 8;
+		TFT_Wait();
+		TFT_Clear1();
+		
+		// Get first byte
+		TFT_DR_16bit = 0;
+		TFT_Wait();
+		b = TFT_DR_16bit;  // Read 7 LO bit
+		b <<= 5;
+		accY += b;
+		
+		// Get second byte
+		TFT_DR_16bit = 0;
+		TFT_Wait();
+		b = TFT_DR_16bit;  // Read 5 HI bit
+		b >>= 11;
+		accY += b;
+	}
+	
+	// Translate to XY
+	if(nIRQ >= TP_MEASCNT)
+	{
+		tp.down = 1;
+		tp.x = ((0x10000 - (uint32_t)accX) * TFT_WIDTH) >> 16;
+		tp.y = ((0x10000 - (uint32_t)accY) * TFT_HEIGHT) >> 16;
+	}
+	else
+	{
+		tp.down = 0;
+	}
+	
+	TFT_8bit();
+	TFT_Clear();
+	TP_Free();
+	
+	if(tp.down)
+	{
+		FillRect(tp.x - 3, tp.y - 3, tp.x + 3, tp.y + 3, RGB5(31, 31, 31));
+	}
+}
+#endif
 
 // Send command with 0 params
 void TFT_SendCmd(const uint8_t cmd, const uint8_t params, const uint8_t delay)
